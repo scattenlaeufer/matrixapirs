@@ -10,6 +10,7 @@ pub enum MatrixAPIError {
     ServerNotDefined(String),
     ConfigFileError(String),
     AccessTokenError(String),
+    ReqwestError(String),
 }
 
 impl std::error::Error for MatrixAPIError {}
@@ -24,7 +25,10 @@ impl fmt::Display for MatrixAPIError {
                 write!(f, "There was a error with the config file: {}", s)
             }
             MatrixAPIError::AccessTokenError(s) => {
-                write!(f, "There was an error reading the access token: {}, s", s)
+                write!(f, "There was an error reading the access token: {}", s)
+            }
+            MatrixAPIError::ReqwestError(s) => {
+                write!(f, "There was an error during the API request: {}", s)
             }
         }
     }
@@ -51,6 +55,12 @@ impl From<toml::de::Error> for MatrixAPIError {
 impl From<std::str::Utf8Error> for MatrixAPIError {
     fn from(error: std::str::Utf8Error) -> Self {
         MatrixAPIError::AccessTokenError(error.to_string())
+    }
+}
+
+impl From<reqwest::Error> for MatrixAPIError {
+    fn from(error: reqwest::Error) -> Self {
+        MatrixAPIError::ReqwestError(error.to_string())
     }
 }
 
@@ -95,7 +105,29 @@ fn get_access_token(server_config: &ServerConfig) -> Result<String, MatrixAPIErr
     Ok(std::str::from_utf8(&pass_cmd.stdout)?.trim().into())
 }
 
+fn make_get_request(
+    server_config: &ServerConfig,
+    api_endpoint: &str,
+    query: Option<HashMap<String, String>>,
+) -> Result<(), MatrixAPIError> {
+    let url = format!("{}/{}", server_config.server_url, api_endpoint);
+    let response = reqwest::blocking::get(&url)?
+        .json::<HashMap<String, String>>()
+        .unwrap();
+    println!("{:?}", response);
+    Ok(())
+}
+
 pub fn get_server_version(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
+    let server_config = get_server_config(server_name)?;
+
+    let result = make_get_request(&server_config, "_synapse/admin/v1/server_version", None)?;
+    println!("{:?}", result);
+
+    Ok(())
+}
+
+pub fn get_user_list(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
     let server_config = get_server_config(server_name)?;
     let access_token = get_access_token(&server_config)?;
     println!("{:?}", access_token);

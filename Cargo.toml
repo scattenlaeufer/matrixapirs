@@ -10,4 +10,5 @@ edition = "2018"
 clap = "2.33.3"
 xdg = "2.2.0"
 toml = "0.5.6"
-serde = {version = "1.0.115", features = ["derive"]}
+serde = { version = "1.0.115", features = ["derive"] }
+reqwest = { version = "0.10", features = ["blocking", "json"] }
