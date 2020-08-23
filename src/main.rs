@@ -24,7 +24,13 @@ fn main() {
                 .author(crate_authors!())
                 .version(crate_version!())
                 .about("modify the users of a given synapse server")
-                .arg(&server_arg),
+                .subcommand(
+                    SubCommand::with_name("list")
+                        .author(crate_authors!())
+                        .version(crate_version!())
+                        .about("modify the users of a given synapse server")
+                        .arg(&server_arg),
+                ),
         )
         .get_matches();
 
@@ -38,9 +44,11 @@ fn main() {
     }
 
     if let Some(matches) = matches.subcommand_matches("user") {
-        match matrixapi::get_user_list(matches.value_of("server")) {
-            Ok(_) => (),
-            Err(e) => eprintln!("Something went wrong: {}", e),
-        };
+        if let Some(matches) = matches.subcommand_matches("list") {
+            match matrixapi::get_user_list(matches.value_of("server")) {
+                Ok(_) => (),
+                Err(e) => eprintln!("Something went wrong: {}", e),
+            };
+        }
     }
 }

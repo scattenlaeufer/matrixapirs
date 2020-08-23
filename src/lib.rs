@@ -1,3 +1,4 @@
+use reqwest::header;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt;
@@ -108,20 +109,39 @@ fn get_access_token(server_config: &ServerConfig) -> Result<String, MatrixAPIErr
 fn make_get_request(
     server_config: &ServerConfig,
     api_endpoint: &str,
-    query: Option<HashMap<String, String>>,
-) -> Result<(), MatrixAPIError> {
+    _query: Option<HashMap<String, String>>,
+    access_token: Option<&str>,
+) -> Result<HashMap<String, String>, MatrixAPIError> {
+    let mut headers = header::HeaderMap::new();
+    if let Some(a) = access_token {
+        headers.insert(
+            header::AUTHORIZATION,
+            header::HeaderValue::from_str(&*format!("Bearer {}", a)).unwrap(),
+        );
+    }
+    println!("{:?}", &headers);
     let url = format!("{}/{}", server_config.server_url, api_endpoint);
-    let response = reqwest::blocking::get(&url)?
+    let client = reqwest::blocking::Client::builder()
+        .default_headers(headers)
+        .build()
+        .unwrap();
+    let response = client
+        .get(&url)
+        .send()?
         .json::<HashMap<String, String>>()
         .unwrap();
-    println!("{:?}", response);
-    Ok(())
+    Ok(response)
 }
 
 pub fn get_server_version(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
     let server_config = get_server_config(server_name)?;
 
-    let result = make_get_request(&server_config, "_synapse/admin/v1/server_version", None)?;
+    let result = make_get_request(
+        &server_config,
+        "_synapse/admin/v1/server_version",
+        None,
+        None,
+    )?;
     println!("{:?}", result);
 
     Ok(())
@@ -130,7 +150,15 @@ pub fn get_server_version(server_name: Option<&str>) -> Result<(), MatrixAPIErro
 pub fn get_user_list(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
     let server_config = get_server_config(server_name)?;
     let access_token = get_access_token(&server_config)?;
-    println!("{:?}", access_token);
+
+    let result = make_get_request(
+        &server_config,
+        "_synapse/admin/v2/users?from=0&guests=true",
+        None,
+        Some(&access_token),
+    );
+
+    println!("{:?}", result);
 
     Ok(())
 }
