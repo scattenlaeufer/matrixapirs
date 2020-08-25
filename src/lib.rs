@@ -1,3 +1,4 @@
+use prettytable::{cell, format, row, table, Cell, Table};
 use reqwest::header;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -108,7 +109,7 @@ struct UserList {
 #[derive(Debug, Deserialize, Serialize)]
 struct User {
     admin: u8,
-    avatar: Option<String>,
+    avatar_url: Option<String>,
     deactivated: u8,
     displayname: String,
     is_guest: u8,
@@ -180,7 +181,11 @@ pub fn get_server_version(server_name: Option<&str>, json: bool) -> Result<(), M
     if json {
         println!("{}", serde_json::to_string(&version_map).unwrap());
     } else {
-        println!("{:#?}", version_map);
+        let table = table!(
+            ["Python", version_map.get("python_version").unwrap()],
+            ["Server", version_map.get("server_version").unwrap()]
+        );
+        table.printstd();
     };
 
     Ok(())
@@ -213,7 +218,43 @@ pub fn get_user_list(server_name: Option<&str>, json: bool) -> Result<(), Matrix
     if json {
         println!("{}", serde_json::to_string(&user_list).unwrap());
     } else {
-        println!("{:#?}", user_list);
+        let mut table = Table::new();
+        table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+
+        table.set_titles(row![
+            "Name",
+            "Displayname",
+            "Admin",
+            "Guest",
+            "Deactivated",
+            "User Type",
+            "Avatar"
+        ]);
+
+        for user in user_list.users {
+            let guest = match user.is_guest {
+                0 => Cell::new("✘"),
+                _ => Cell::new("✔"),
+            };
+            let deactivated = match user.deactivated {
+                0 => Cell::new("✘"),
+                _ => Cell::new("✔"),
+            };
+            let user_type = match user.user_type {
+                Some(t) => t,
+                None => "none".to_string(),
+            };
+            let avatar = match user.avatar_url {
+                Some(s) => s,
+                None => "none".to_string(),
+            };
+            match user.admin {
+                0 => table.add_row(row![user.name, user.displayname, cFg->"✘", c->guest, c->deactivated, user_type, avatar]),
+                _ => table.add_row(row![user.name, user.displayname, cFr->"✔", c->guest, c->deactivated, user_type, avatar]),
+            };
+        }
+
+        table.printstd();
     }
 
     Ok(())
