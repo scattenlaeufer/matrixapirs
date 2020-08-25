@@ -47,12 +47,12 @@ fn main() {
             SubCommand::with_name("user")
                 .author(crate_authors!())
                 .version(crate_version!())
-                .about("modify the users of a given synapse server")
+                .about("Interact the users of a given synapse server")
                 .subcommand(
                     SubCommand::with_name("list")
                         .author(crate_authors!())
                         .version(crate_version!())
-                        .about("modify the users of a given synapse server")
+                        .about("Get a list of all users on a given synapse server")
                         .arg(&server_arg)
                         .arg(&json_arg),
                 ),
