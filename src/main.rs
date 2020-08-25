@@ -11,6 +11,12 @@ fn exit_program(result: Result<(), matrixapi::MatrixAPIError>) {
 }
 
 fn main() {
+    let debug_arg = Arg::with_name("debug")
+        .short("d")
+        .long("debug")
+        .help("Print debug output")
+        .takes_value(false);
+
     let server_arg = Arg::with_name("server")
         .short("s")
         .long("server")
@@ -18,16 +24,24 @@ fn main() {
         .help("The server to be used")
         .takes_value(true);
 
+    let json_arg = Arg::with_name("json")
+        .short("j")
+        .long("json")
+        .help("Return data as json instead of a table")
+        .takes_value(false);
+
     let matches = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())
         .about(crate_description!())
+        .arg(&debug_arg)
         .subcommand(
             SubCommand::with_name("version")
                 .author(crate_authors!())
                 .version(crate_version!())
                 .about("Get the current version of the synapse server")
-                .arg(&server_arg),
+                .arg(&server_arg)
+                .arg(&json_arg),
         )
         .subcommand(
             SubCommand::with_name("user")
@@ -39,20 +53,29 @@ fn main() {
                         .author(crate_authors!())
                         .version(crate_version!())
                         .about("modify the users of a given synapse server")
-                        .arg(&server_arg),
+                        .arg(&server_arg)
+                        .arg(&json_arg),
                 ),
         )
         .get_matches();
 
-    println!("{:?}", matches);
+    if matches.is_present("debug") {
+        println!("{:?}", matches);
+    }
 
     if let Some(matches) = matches.subcommand_matches("version") {
-        exit_program(matrixapi::get_server_version(matches.value_of("server")));
+        exit_program(matrixapi::get_server_version(
+            matches.value_of("server"),
+            matches.is_present("json"),
+        ));
     }
 
     if let Some(matches) = matches.subcommand_matches("user") {
         if let Some(matches) = matches.subcommand_matches("list") {
-            exit_program(matrixapi::get_user_list(matches.value_of("server")));
+            exit_program(matrixapi::get_user_list(
+                matches.value_of("server"),
+                matches.is_present("json"),
+            ));
         }
     }
 }

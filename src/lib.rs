@@ -1,5 +1,5 @@
 use reqwest::header;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
@@ -99,13 +99,13 @@ struct ServerConfig {
     pass_access_token: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct UserList {
     total: u32,
     users: Vec<User>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct User {
     admin: u8,
     avatar: Option<String>,
@@ -165,21 +165,28 @@ fn make_get_request(
     Ok(client.get(&url).send()?)
 }
 
-pub fn get_server_version(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
+pub fn get_server_version(server_name: Option<&str>, json: bool) -> Result<(), MatrixAPIError> {
     let server_config = get_server_config(server_name)?;
 
-    let result = make_get_request(
+    let response = make_get_request(
         &server_config,
         "_synapse/admin/v1/server_version",
         None,
         None,
     )?;
-    println!("{:?}", result);
+
+    let version_map = response.json::<HashMap<String, String>>()?;
+
+    if json {
+        println!("{}", serde_json::to_string(&version_map).unwrap());
+    } else {
+        println!("{:#?}", version_map);
+    };
 
     Ok(())
 }
 
-pub fn get_user_list(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
+pub fn get_user_list(server_name: Option<&str>, json: bool) -> Result<(), MatrixAPIError> {
     let server_config = get_server_config(server_name)?;
     let access_token = get_access_token(&server_config)?;
 
@@ -203,7 +210,11 @@ pub fn get_user_list(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
         }
     };
 
-    println!("{:#?}", user_list);
+    if json {
+        println!("{}", serde_json::to_string(&user_list).unwrap());
+    } else {
+        println!("{:#?}", user_list);
+    }
 
     Ok(())
 }
