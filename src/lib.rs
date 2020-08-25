@@ -23,7 +23,7 @@ impl fmt::Display for MatrixAPIError {
                 write!(f, "The given server {} is not defined", s)
             }
             MatrixAPIError::ConfigFileError(s) => {
-                write!(f, "There was a error with the config file: {}", s)
+                write!(f, "There was an error with the config file: {}", s)
             }
             MatrixAPIError::AccessTokenError(s) => {
                 write!(f, "There was an error reading the access token: {}", s)
