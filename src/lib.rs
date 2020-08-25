@@ -7,18 +7,23 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::process::Command;
 
+#[derive(Debug, Deserialize)]
+pub struct APIErrorResponse {
+    errcode: String,
+    error: String,
+    soft_logout: Option<bool>,
+}
+
 #[derive(Debug)]
 pub struct APIErrorMessage {
-    error: String,
-    errcode: String,
+    api_error_response: APIErrorResponse,
     status_code: u16,
 }
 
 impl APIErrorMessage {
-    fn new(error: &str, errcode: &str, status_code: u16) -> APIErrorMessage {
+    fn new(api_error_response: APIErrorResponse, status_code: u16) -> APIErrorMessage {
         APIErrorMessage {
-            error: String::from(error),
-            errcode: String::from(errcode),
+            api_error_response,
             status_code,
         }
     }
@@ -51,7 +56,7 @@ impl fmt::Display for MatrixAPIError {
                 write!(f, "There was an error during the HTTP request: {}", s)
             }
             MatrixAPIError::APIRequestError(e) => {
-                write!(f, "There was an error running the API request.\n\terror:\t\"{}\"\n\terrcode\t\"{}\"\n\tstatus:\t{}", e.error, e.errcode, e.status_code)
+                write!(f, "There was an error running the API request.\n\terror:\t\"{}\"\n\terrcode\t\"{}\"\n\tstatus:\t{}", e.api_error_response.error, e.api_error_response.errcode, e.status_code)
             }
         }
     }
@@ -206,10 +211,9 @@ pub fn get_user_list(server_name: Option<&str>, json: bool) -> Result<(), Matrix
     let user_list = match status_code {
         200 => response.json::<UserList>().unwrap(),
         _ => {
-            let response_map = response.json::<HashMap<String, String>>()?;
+            let api_error_response = response.json::<APIErrorResponse>()?;
             return Err(MatrixAPIError::APIRequestError(APIErrorMessage::new(
-                response_map.get("error").unwrap(),
-                response_map.get("errcode").unwrap(),
+                api_error_response,
                 status_code,
             )));
         }
