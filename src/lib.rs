@@ -7,11 +7,29 @@ use std::io::prelude::*;
 use std::process::Command;
 
 #[derive(Debug)]
+pub struct APIErrorMessage {
+    error: String,
+    errcode: String,
+    status_code: u16,
+}
+
+impl APIErrorMessage {
+    fn new(error: &str, errcode: &str, status_code: u16) -> APIErrorMessage {
+        APIErrorMessage {
+            error: String::from(error),
+            errcode: String::from(errcode),
+            status_code,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum MatrixAPIError {
     ServerNotDefined(String),
     ConfigFileError(String),
     AccessTokenError(String),
     ReqwestError(String),
+    APIRequestError(APIErrorMessage),
 }
 
 impl std::error::Error for MatrixAPIError {}
@@ -29,7 +47,10 @@ impl fmt::Display for MatrixAPIError {
                 write!(f, "There was an error reading the access token: {}", s)
             }
             MatrixAPIError::ReqwestError(s) => {
-                write!(f, "There was an error during the API request: {}", s)
+                write!(f, "There was an error during the HTTP request: {}", s)
+            }
+            MatrixAPIError::APIRequestError(e) => {
+                write!(f, "There was an error running the API request.\n\terror:\t\"{}\"\n\terrcode\t\"{}\"\n\tstatus:\t{}", e.error, e.errcode, e.status_code)
             }
         }
     }
@@ -116,7 +137,7 @@ fn make_get_request(
     if let Some(a) = access_token {
         headers.insert(
             header::AUTHORIZATION,
-            header::HeaderValue::from_str(&*format!("Bearer {}", a)).unwrap(),
+            header::HeaderValue::from_str(&*format!("Bearer{}", a)).unwrap(),
         );
     }
     println!("{:?}", &headers);
@@ -125,12 +146,18 @@ fn make_get_request(
         .default_headers(headers)
         .build()
         .unwrap();
-    let response = client
-        .get(&url)
-        .send()?
-        .json::<HashMap<String, String>>()
-        .unwrap();
-    Ok(response)
+    let response = client.get(&url).send()?;
+    println!("{:?}", response);
+    let status_code = response.status().as_u16();
+    let response_map = response.json::<HashMap<String, String>>().unwrap();
+    match status_code {
+        200 => Ok(response_map),
+        _ => Err(MatrixAPIError::APIRequestError(APIErrorMessage::new(
+            response_map.get("error").unwrap(),
+            response_map.get("errcode").unwrap(),
+            status_code,
+        ))),
+    }
 }
 
 pub fn get_server_version(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
@@ -156,7 +183,7 @@ pub fn get_user_list(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
         "_synapse/admin/v2/users?from=0&guests=true",
         None,
         Some(&access_token),
-    );
+    )?;
 
     println!("{:?}", result);
 
