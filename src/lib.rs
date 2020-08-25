@@ -99,6 +99,23 @@ struct ServerConfig {
     pass_access_token: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct UserList {
+    total: u32,
+    users: Vec<User>,
+}
+
+#[derive(Debug, Deserialize)]
+struct User {
+    admin: u8,
+    avatar: Option<String>,
+    deactivated: u8,
+    displayname: String,
+    is_guest: u8,
+    name: String,
+    user_type: Option<String>,
+}
+
 fn get_server_config(server: Option<&str>) -> Result<ServerConfig, MatrixAPIError> {
     let xdg_dirs = xdg::BaseDirectories::with_prefix("matrixapirs")?;
     let config_path = xdg_dirs
@@ -132,32 +149,33 @@ fn make_get_request(
     api_endpoint: &str,
     _query: Option<HashMap<String, String>>,
     access_token: Option<&str>,
-) -> Result<HashMap<String, String>, MatrixAPIError> {
+) -> Result<UserList, MatrixAPIError> {
     let mut headers = header::HeaderMap::new();
     if let Some(a) = access_token {
         headers.insert(
             header::AUTHORIZATION,
-            header::HeaderValue::from_str(&*format!("Bearer{}", a)).unwrap(),
+            header::HeaderValue::from_str(&*format!("Bearer {}", a)).unwrap(),
         );
     }
-    println!("{:?}", &headers);
     let url = format!("{}/{}", server_config.server_url, api_endpoint);
     let client = reqwest::blocking::Client::builder()
         .default_headers(headers)
         .build()
         .unwrap();
     let response = client.get(&url).send()?;
-    println!("{:?}", response);
     let status_code = response.status().as_u16();
-    let response_map = response.json::<HashMap<String, String>>().unwrap();
-    match status_code {
-        200 => Ok(response_map),
-        _ => Err(MatrixAPIError::APIRequestError(APIErrorMessage::new(
-            response_map.get("error").unwrap(),
-            response_map.get("errcode").unwrap(),
-            status_code,
-        ))),
-    }
+    println!("{:?}", &response.text().unwrap());
+    Err(MatrixAPIError::AccessTokenError("blubb".to_string()))
+    //let user_list = response.json::<UserList>().unwrap();
+    //Ok(user_list)
+    // match status_code {
+    //     200 => Ok(response_map),
+    //     _ => Err(MatrixAPIError::APIRequestError(APIErrorMessage::new(
+    //         response_map.get("error").unwrap(),
+    //         response_map.get("errcode").unwrap(),
+    //         status_code,
+    //     ))),
+    // }
 }
 
 pub fn get_server_version(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
@@ -185,7 +203,7 @@ pub fn get_user_list(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
         Some(&access_token),
     )?;
 
-    println!("{:?}", result);
+    println!("{:#?}", result);
 
     Ok(())
 }
