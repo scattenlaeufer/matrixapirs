@@ -149,7 +149,7 @@ fn make_get_request(
     api_endpoint: &str,
     _query: Option<HashMap<String, String>>,
     access_token: Option<&str>,
-) -> Result<UserList, MatrixAPIError> {
+) -> Result<reqwest::blocking::Response, MatrixAPIError> {
     let mut headers = header::HeaderMap::new();
     if let Some(a) = access_token {
         headers.insert(
@@ -162,20 +162,7 @@ fn make_get_request(
         .default_headers(headers)
         .build()
         .unwrap();
-    let response = client.get(&url).send()?;
-    let status_code = response.status().as_u16();
-    println!("{:?}", &response.text().unwrap());
-    Err(MatrixAPIError::AccessTokenError("blubb".to_string()))
-    //let user_list = response.json::<UserList>().unwrap();
-    //Ok(user_list)
-    // match status_code {
-    //     200 => Ok(response_map),
-    //     _ => Err(MatrixAPIError::APIRequestError(APIErrorMessage::new(
-    //         response_map.get("error").unwrap(),
-    //         response_map.get("errcode").unwrap(),
-    //         status_code,
-    //     ))),
-    // }
+    Ok(client.get(&url).send()?)
 }
 
 pub fn get_server_version(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
@@ -196,14 +183,27 @@ pub fn get_user_list(server_name: Option<&str>) -> Result<(), MatrixAPIError> {
     let server_config = get_server_config(server_name)?;
     let access_token = get_access_token(&server_config)?;
 
-    let result = make_get_request(
+    let response = make_get_request(
         &server_config,
         "_synapse/admin/v2/users?from=0&guests=true",
         None,
         Some(&access_token),
     )?;
 
-    println!("{:#?}", result);
+    let status_code = response.status().as_u16();
+    let user_list = match status_code {
+        200 => response.json::<UserList>().unwrap(),
+        _ => {
+            let response_map = response.json::<HashMap<String, String>>()?;
+            return Err(MatrixAPIError::APIRequestError(APIErrorMessage::new(
+                response_map.get("error").unwrap(),
+                response_map.get("errcode").unwrap(),
+                status_code,
+            )));
+        }
+    };
+
+    println!("{:#?}", user_list);
 
     Ok(())
 }
