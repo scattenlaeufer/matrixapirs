@@ -1,5 +1,15 @@
 use clap::{crate_authors, crate_description, crate_name, crate_version, App, Arg, SubCommand};
 
+fn exit_program(result: Result<(), matrixapi::MatrixAPIError>) {
+    match result {
+        Ok(_) => std::process::exit(exitcode::OK),
+        Err(e) => {
+            eprintln!("Something went wrong: {}", e);
+            std::process::exit(exitcode::USAGE);
+        }
+    };
+}
+
 fn main() {
     let server_arg = Arg::with_name("server")
         .short("s")
@@ -37,18 +47,12 @@ fn main() {
     println!("{:?}", matches);
 
     if let Some(matches) = matches.subcommand_matches("version") {
-        match matrixapi::get_server_version(matches.value_of("server")) {
-            Ok(_) => (),
-            Err(e) => eprintln!("Something went wrong: {}", e),
-        };
+        exit_program(matrixapi::get_server_version(matches.value_of("server")));
     }
 
     if let Some(matches) = matches.subcommand_matches("user") {
         if let Some(matches) = matches.subcommand_matches("list") {
-            match matrixapi::get_user_list(matches.value_of("server")) {
-                Ok(_) => (),
-                Err(e) => eprintln!("Something went wrong: {}", e),
-            };
+            exit_program(matrixapi::get_user_list(matches.value_of("server")));
         }
     }
 }

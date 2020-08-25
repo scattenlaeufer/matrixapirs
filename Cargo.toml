@@ -12,3 +12,4 @@ xdg = "2.2.0"
 toml = "0.5.6"
 serde = { version = "1.0.115", features = ["derive"] }
 reqwest = { version = "0.10", features = ["blocking", "json"] }
+exitcode = "1.1.2"
