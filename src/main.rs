@@ -30,6 +30,11 @@ fn main() {
         .help("Return data as json instead of a table")
         .takes_value(false);
 
+    let user_name_arg = Arg::with_name("user_name")
+        .value_name("USER_NAME")
+        .required(true)
+        .help("Name of a specific user");
+
     let matches = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())
@@ -55,6 +60,15 @@ fn main() {
                         .about("Get a list of all users on a given synapse server")
                         .arg(&server_arg)
                         .arg(&json_arg),
+                )
+                .subcommand(
+                    SubCommand::with_name("detail")
+                        .author(crate_authors!())
+                        .version(crate_version!())
+                        .about("Get a list of all users on a given synapse server")
+                        .arg(&server_arg)
+                        .arg(&user_name_arg)
+                        .arg(&json_arg),
                 ),
         )
         .get_matches();
@@ -76,6 +90,13 @@ fn main() {
                 matches.value_of("server"),
                 matches.is_present("json"),
             ));
-        }
+        };
+        if let Some(matches) = matches.subcommand_matches("detail") {
+            exit_program(matrixapi::get_user_detail(
+                matches.value_of("server"),
+                matches.value_of("user_name").unwrap(),
+                matches.is_present("json"),
+            ));
+        };
     }
 }

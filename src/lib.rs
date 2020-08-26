@@ -150,6 +150,10 @@ fn get_access_token(server_config: &ServerConfig) -> Result<String, MatrixAPIErr
     Ok(std::str::from_utf8(&pass_cmd.stdout)?.trim().into())
 }
 
+fn get_user_id(server_config: &ServerConfig, user_name: &str) -> String {
+    format!("@{}:{}", user_name, server_config.server_name)
+}
+
 fn make_get_request(
     server_config: &ServerConfig,
     api_endpoint: &str,
@@ -237,7 +241,7 @@ pub fn get_user_list(server_name: Option<&str>, json: bool) -> Result<(), Matrix
 
         for user in user_list.users {
             let guest = match user.is_guest {
-                0 => Cell::new("✘"),
+                0 => Cell::new("✘").style_spec("Fg"),
                 _ => Cell::new("✔"),
             };
             let deactivated = match user.deactivated {
@@ -253,13 +257,25 @@ pub fn get_user_list(server_name: Option<&str>, json: bool) -> Result<(), Matrix
                 None => "none".to_string(),
             };
             match user.admin {
-                0 => table.add_row(row![user.name, user.displayname, cFg->"✘", c->guest, c->deactivated, user_type, avatar]),
+                0 => table.add_row(row![user.name, user.displayname, cFg->"✘", c->&guest, c->deactivated, user_type, avatar]),
                 _ => table.add_row(row![user.name, user.displayname, cFr->"✔", c->guest, c->deactivated, user_type, avatar]),
             };
         }
 
         table.printstd();
     }
+
+    Ok(())
+}
+
+pub fn get_user_detail(
+    server_name: Option<&str>,
+    user_name: &str,
+    json: bool,
+) -> Result<(), MatrixAPIError> {
+    let server_config = get_server_config(server_name)?;
+    let user_id = get_user_id(&server_config, user_name);
+    println!("{:?}", user_id);
 
     Ok(())
 }
